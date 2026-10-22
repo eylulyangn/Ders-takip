@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ders Takip</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;padding:18px;font-family:-apple-system,BlinkMacSystemFont,Arial,sans-serif;background:#f2f5fb;color:#172033}
+header,main,footer{max-width:750px;margin-left:auto;margin-right:auto}
+header{margin-bottom:22px} h1{margin:8px 0;font-size:28px} header p{color:#64748b;margin:0}
+.course{background:#fff;border-radius:16px;padding:16px;margin-bottom:16px;box-shadow:0 3px 14px #1720330c}
+.course-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap} h2{font-size:19px;margin:0} .count{font-size:13px;color:#475569;font-weight:600}
+.progress{height:6px;background:#e2e8f0;border-radius:10px;margin:12px 0 16px;overflow:hidden}.bar{height:100%;background:#16a34a;width:0}
+.session{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:12px 0;border-top:1px solid #edf0f5}.date{font-size:14px;font-weight:600}.weekday{font-size:12px;color:#64748b;margin-top:4px}.actions{display:flex;gap:8px}
+.mark{border:1px solid #dbe2ec;background:white;border-radius:10px;width:43px;height:43px;font-size:22px;cursor:pointer}.mark.selected-yes{background:#dcfce7;border-color:#22c55e}.mark.selected-no{background:#fee2e2;border-color:#ef4444}
+.empty{color:#64748b;font-size:14px;padding-top:14px}.tools{display:flex;gap:8px;flex-wrap:wrap;margin:20px 0}.tools button,.tools label{border:1px solid #dbe2ec;background:white;color:#172033;padding:11px 13px;border-radius:10px;font-size:14px;cursor:pointer}input[type=file]{display:none}footer{margin-top:20px;color:#64748b;font-size:12px}
+</style>
+</head>
+<body>
+<header><h1>📚 Ders Takip</h1><p>Yoklamalarını işaretle, katılımını takip et.</p></header>
+<main><div id="courses"></div><div class="tools"><button id="exportBtn">Yedeği indir</button><label for="importFile">Yedek yükle</label><input id="importFile" type="file" accept=".json,application/json"></div></main>
+<footer>İşaretlemeler bu cihazdaki tarayıcıda saklanır. Kayıtlarını korumak için ara sıra yedek indir.</footer>
+<script>
+const END_DATE = "2026-12-31";
+const STORAGE_KEY = "dersTakip2026_v2";
+function datesBetween(start,end,weekdays){const result=[];const date=new Date(start+"T12:00:00");const last=new Date(end+"T12:00:00");while(date<=last){if(weekdays.includes(date.getDay()))result.push(date.getFullYear()+"-"+String(date.getMonth()+1).padStart(2,"0")+"-"+String(date.getDate()).padStart(2,"0"));date.setDate(date.getDate()+1)}return result}
+const courses=[{id:"BLGM321",name:"BLGM321",dates:datesBetween("2026-09-22",END_DATE,[2,3])},{id:"BLGM325",name:"BLGM325",dates:datesBetween("2026-09-22",END_DATE,[2,3])},{id:"BLGM353",name:"BLGM353",dates:datesBetween("2026-10-01",END_DATE,[1,4])},{id:"BLGM371",name:"BLGM371",dates:[]},{id:"MATE332",name:"MATE332",dates:[]}];
+let saved={};try{saved=JSON.parse(localStorage.getItem(STORAGE_KEY)||"{}")}catch(error){saved={}}
+function save(){localStorage.setItem(STORAGE_KEY,JSON.stringify(saved))}
+function formatDate(s){return new Date(s+"T12:00:00").toLocaleDateString("tr-TR",{day:"numeric",month:"long",year:"numeric"})}
+function weekdayName(s){return new Date(s+"T12:00:00").toLocaleDateString("tr-TR",{weekday:"long"})}
+function setMark(id,date,value){if(!saved[id])saved[id]={};saved[id][date]=saved[id][date]===value?null:value;save();render()}
+function render(){const root=document.getElementById("courses");root.innerHTML="";courses.forEach(course=>{if(!saved[course.id])saved[course.id]={};const marked=course.dates.filter(d=>saved[course.id][d]==="yes"||saved[course.id][d]==="no").length;const attended=course.dates.filter(d=>saved[course.id][d]==="yes").length;const card=document.createElement("section");card.className="course";const head=document.createElement("div");head.className="course-head";const title=document.createElement("h2");title.textContent=course.name;const count=document.createElement("div");count.className="count";count.textContent=course.dates.length?"✅ "+attended+"/"+course.dates.length+" · İşaretlenen "+marked+"/"+course.dates.length:"Ders günleri eklenmedi";head.append(title,count);card.append(head);if(course.dates.length){const progress=document.createElement("div");progress.className="progress";const bar=document.createElement("div");bar.className="bar";bar.style.width=(attended/course.dates.length*100)+"%";progress.append(bar);card.append(progress);course.dates.forEach(date=>{const session=document.createElement("div");session.className="session";const dateBox=document.createElement("div");const dateText=document.createElement("div");dateText.className="date";dateText.textContent=formatDate(date);const weekday=document.createElement("div");weekday.className="weekday";const dayName=weekdayName(date);weekday.textContent=dayName.charAt(0).toLocaleUpperCase("tr-TR")+dayName.slice(1);dateBox.append(dateText,weekday);const actions=document.createElement("div");actions.className="actions";const yes=document.createElement("button");yes.className="mark"+(saved[course.id][date]==="yes"?" selected-yes":"");yes.textContent="✅";yes.setAttribute("aria-label","Katıldım");yes.onclick=()=>setMark(course.id,date,"yes");const no=document.createElement("button");no.className="mark"+(saved[course.id][date]==="no"?" selected-no":"");no.textContent="❌";no.setAttribute("aria-label","Katılmadım");no.onclick=()=>setMark(course.id,date,"no");actions.append(yes,no);session.append(dateBox,actions);card.append(session)})}else{const empty=document.createElement("div");empty.className="empty";empty.textContent="Bu dersin günleri belirlenince yoklama tarihleri eklenecek.";card.append(empty)}root.append(card)});save()}
+document.getElementById("exportBtn").onclick=()=>{const blob=new Blob([JSON.stringify(saved,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="ders-takip-yedek.json";a.click();URL.revokeObjectURL(url)};
+document.getElementById("importFile").onchange=event=>{const file=event.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const imported=JSON.parse(reader.result);if(!imported||typeof imported!=="object"||Array.isArray(imported))throw new Error("Geçersiz dosya");saved=imported;save();render();alert("Yedek yüklendi.")}catch(error){alert("Yedek dosyası okunamadı.")}event.target.value=""};reader.readAsText(file)};
+render();
+</script>
+</body>
+</html>
